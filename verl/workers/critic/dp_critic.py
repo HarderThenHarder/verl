@@ -18,9 +18,9 @@ import itertools
 from typing import Iterable
 
 import torch
+from tqdm import tqdm
 import torch.distributed
 from torch import nn, optim
-
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 
 from verl import DataProto
@@ -151,7 +151,7 @@ class DataParallelPPOCritic(BasePPOCritic):
         # See PPO paper for details. https://arxiv.org/abs/1707.06347
         dataloader = batch.split(self.config.ppo_mini_batch_size)
 
-        for batch_idx, data in enumerate(dataloader):
+        for batch_idx, data in enumerate(tqdm(dataloader, desc='Updating Critic')):
             # split batch into micro_batches
             mini_batch = data
             if self.config.use_dynamic_bsz:

@@ -22,9 +22,16 @@ from typing import List, Union, Dict, Any
 
 
 class Tracking(object):
-    supported_backend = ["wandb", "mlflow", "swanlab", "console"]
+    supported_backend = ["wandb", "mlflow", "swanlab", "console", "tensorboard", "rl_logging_board"]
 
-    def __init__(self, project_name, experiment_name, default_backend: Union[str, List[str]] = 'console', config=None):
+    def __init__(self, 
+        trainer_config: dict,
+        config=None
+    ):  
+        project_name=trainer_config.trainer.project_name
+        experiment_name=trainer_config.trainer.experiment_name
+        default_backend=trainer_config.trainer.logger
+        
         if isinstance(default_backend, str):
             default_backend = [default_backend]
         for backend in default_backend:
@@ -40,6 +47,22 @@ class Tracking(object):
             import wandb
             wandb.init(project=project_name, name=experiment_name, config=config)
             self.logger['wandb'] = wandb
+        
+        if 'tensorboard' in default_backend:
+            from verl.utils.tensorboard import TensorboardLogger
+            self.logger['tensorboard'] = TensorboardLogger(
+                trainer_config.trainer.tensorboard_dir,
+                project_name, 
+                experiment_name
+            )
+            
+        if 'rl_logging_board' in default_backend:
+            from verl.utils.rl_logging_board import RLLoggingBoardLogger
+            self.logger['rl_logging_board'] = RLLoggingBoardLogger(
+                trainer_config.trainer.rl_logging_board_dir,
+                project_name, 
+                experiment_name
+            )
 
         if 'mlflow' in default_backend:
             import mlflow
@@ -68,10 +91,10 @@ class Tracking(object):
             self.console_logger = LocalLogger(print_to_console=True)
             self.logger['console'] = self.console_logger
 
-    def log(self, data, step, backend=None):
+    def log(self, data, step, batch, backend=None, tokenizer=None):
         for default_backend, logger_instance in self.logger.items():
             if backend is None or default_backend in backend:
-                logger_instance.log(data=data, step=step)
+                logger_instance.log(data=data, step=step, batch=batch, tokenizer=tokenizer)
 
     def __del__(self):
         if 'wandb' in self.logger:

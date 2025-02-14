@@ -16,6 +16,7 @@ A Ray logger will receive logging info from different processes.
 """
 import numbers
 from typing import Dict
+from verl import DataProto
 
 
 def concat_dict_to_str(dict: Dict, step):
@@ -37,6 +38,13 @@ class LocalLogger:
     def flush(self):
         pass
 
-    def log(self, data, step):
+    def log(
+        self, 
+        data, 
+        step,
+        batch: DataProto, 
+        *args,
+        **kwargs
+    ):
         if self.print_to_console:
             print(concat_dict_to_str(data, step=step), flush=True)

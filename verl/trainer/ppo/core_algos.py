@@ -216,6 +216,7 @@ def compute_policy_loss(old_log_prob, log_prob, advantages, eos_mask, cliprange)
 
     """
     negative_approx_kl = log_prob - old_log_prob
+    
     ratio = torch.exp(negative_approx_kl)
     ppo_kl = verl_F.masked_mean(-negative_approx_kl, eos_mask)
 

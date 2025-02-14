@@ -77,9 +77,12 @@ class BaseCheckpointManager:
             working_dir = os.getcwd()
             path = os.path.join(working_dir, path)
 
-        with FileLock(os.path.join(tempfile.gettempdir(), path + '.lock')):
-            # make a new dir
-            os.makedirs(path, exist_ok=True)
+        try:
+            with FileLock(os.path.join(tempfile.gettempdir(), path + '.lock')):
+                # make a new dir
+                os.makedirs(path, exist_ok=True)
+        except:
+            pass
 
         return path
 

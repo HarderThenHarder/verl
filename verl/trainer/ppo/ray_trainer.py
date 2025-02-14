@@ -25,6 +25,7 @@ from pprint import pprint
 from typing import Type, Dict
 
 import numpy as np
+from tqdm import tqdm
 from codetiming import Timer
 from omegaconf import OmegaConf, open_dict
 from verl import DataProto
@@ -674,14 +675,17 @@ class RayPPOTrainer(object):
         if self.use_critic:
             self.critic_wg = all_wg['critic']
             self.critic_wg.init_model()
+            print(f"Finish initializing critic!")
 
         if self.use_reference_policy:
             self.ref_policy_wg = all_wg['ref']
             self.ref_policy_wg.init_model()
+            print(f"Finish initializing ref model!")
 
         if self.use_rm:
             self.rm_wg = all_wg['rm']
             self.rm_wg.init_model()
+            print(f"Finish initializing rm!")
 
         # we should create rollout at the end so that vllm can have a better estimation of kv cache memory
         self.actor_rollout_wg = all_wg['actor_rollout']
@@ -789,10 +793,10 @@ class RayPPOTrainer(object):
         from verl.utils.tracking import Tracking
         from omegaconf import OmegaConf
 
-        logger = Tracking(project_name=self.config.trainer.project_name,
-                          experiment_name=self.config.trainer.experiment_name,
-                          default_backend=self.config.trainer.logger,
-                          config=OmegaConf.to_container(self.config, resolve=True))
+        logger = Tracking(
+            trainer_config=self.config,
+            config=OmegaConf.to_container(self.config, resolve=True)
+        )
 
         self.global_steps = 0
 
@@ -804,7 +808,13 @@ class RayPPOTrainer(object):
         if self.val_reward_fn is not None and self.config.trainer.get('val_before_train', True):
             val_metrics = self._validate()
             pprint(f'Initial validation metrics: {val_metrics}')
-            logger.log(data=val_metrics, step=self.global_steps)
+            logger.log(
+                data=val_metrics, 
+                step=self.global_steps, 
+                batch=None, 
+                tokenizer=self.tokenizer
+            )
+            
             if self.config.trainer.get('val_only', False):
                 return
 
@@ -812,7 +822,7 @@ class RayPPOTrainer(object):
         self.global_steps += 1
 
         for epoch in range(self.config.trainer.total_epochs):
-            for batch_dict in self.train_dataloader:
+            for batch_dict in tqdm(self.train_dataloader, desc=f'Epoch {epoch} | '):
                 metrics = {}
                 timing_raw = {}
 
@@ -918,7 +928,12 @@ class RayPPOTrainer(object):
                 metrics.update(compute_timing_metrics(batch=batch, timing_raw=timing_raw))
 
                 # TODO: make a canonical logger that supports various backend
-                logger.log(data=metrics, step=self.global_steps)
+                logger.log(
+                    data=metrics, 
+                    step=self.global_steps,
+                    batch=batch,
+                    tokenizer=self.tokenizer
+                )
 
                 self.global_steps += 1
 
@@ -928,5 +943,10 @@ class RayPPOTrainer(object):
                     if self.val_reward_fn is not None:
                         val_metrics = self._validate()
                         pprint(f'Final validation metrics: {val_metrics}')
-                        logger.log(data=val_metrics, step=self.global_steps)
+                        logger.log(
+                            data=val_metrics, 
+                            step=self.global_steps, 
+                            batch=batch,
+                            tokenizer=self.tokenizer
+                        )
                     return
