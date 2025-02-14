@@ -143,6 +143,15 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             os.makedirs(hf_local_path, exist_ok=True)
             self.model._fsdp_wrapped_module.config.save_pretrained(hf_local_path)
             self.tokenizer.save_pretrained(hf_local_path)
+            
+        with FSDP.state_dict_type(self.model, StateDictType.FULL_STATE_DICT):
+            consolidated_model_state_dict = self.model.state_dict()
+            
+            if self.rank == 0:
+                model_save_path = os.path.join(hf_local_path, 'pytorch_model.bin')
+                print(f"[rank-{self.rank}]: Saving merged hf model to {os.path.abspath(model_save_path)}")
+                torch.save(consolidated_model_state_dict, model_save_path)
+                print(f"[rank-{self.rank}]: Successfully saved merged model in HuggingFace format!")
 
         torch.distributed.barrier()
 
