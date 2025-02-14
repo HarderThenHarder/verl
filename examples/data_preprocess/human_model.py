@@ -55,9 +55,8 @@ def processing_function(row):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--local_path', default='/cpfs/user/bupo/data/intent_rm_dataset/human_model_add_sug_task.jsonl')
-    # parser.add_argument('--local_path', default='/cpfs/user/linke/human_model/test_data/hm_24-10_test_500.jsonl')
-    parser.add_argument('--save_path', default='/cpfs/user/bupo/data/intent_rm_dataset/human_model/train.parquet')
+    parser.add_argument('--local_path', default='task.jsonl')
+    parser.add_argument('--save_path', default='train.parquet')
     args = parser.parse_args()
     
     origin_dataset = pd.read_json(args.local_path, lines=True)
